@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import CodeEditor from './CodeEditor';
-import VariablesPanel from './VariablesPanel';
+import MemoryVisualizer from './MemoryVisualizer';
 import StepControls from './StepControls';
 import OutputPanel from './OutputPanel';
 import ExplanationPanel from './ExplanationPanel';
@@ -16,6 +16,7 @@ const Visualizer = () => {
   const [explanation, setExplanation] = useState('');
   const [explaining, setExplaining] = useState(false);
   const [truncated, setTruncated] = useState(false);
+  const [useAdvancedViz, setUseAdvancedViz] = useState(true); // Toggle between old and new visualization
 
   // ── Animation Mode State ──
   const [animationMode, setAnimationMode] = useState(false);
@@ -67,12 +68,25 @@ const Visualizer = () => {
       const response = await axios.post(`${API_BASE}/run`, { code });
       const rawSteps = response.data.steps;
       const wasTruncated = response.data.truncated || false;
-      
+
       // Merge variables across steps so memory persists
       const processedSteps = rawSteps.reduce((acc, step, idx) => {
         const prevVariables = idx > 0 ? acc[idx - 1].variables : {};
         const mergedVariables = { ...prevVariables, ...step.variables };
-        acc.push({ ...step, variables: mergedVariables });
+
+        // Also merge memory entries — keep all from current, add any from prev that aren't in current
+        const prevMemory = idx > 0 ? acc[idx - 1].memory || [] : [];
+        const currentMemNames = new Set((step.memory || []).map(m => m.name));
+        const mergedMemory = [
+          ...(step.memory || []),
+          ...prevMemory.filter(m => !currentMemNames.has(m.name)),
+        ];
+
+        acc.push({
+          ...step,
+          variables: mergedVariables,
+          memory: mergedMemory,
+        });
         return acc;
       }, []);
 
@@ -169,13 +183,13 @@ const Visualizer = () => {
   const handleExplain = React.useCallback(async () => {
     if (animationMode) return; // Skip API calls in animation mode
     if (currentStepIndex < 0 || currentStepIndex >= steps.length) return;
-    
+
     const step = steps[currentStepIndex];
     if (step.error) return;
 
     setExplaining(true);
     try {
-      const lineContent = code.split('\n')[step.line - 1] || "Evaluation";
+      const lineContent = code.split('\n')[step.lineNumber - 1] || "Evaluation";
       const response = await axios.post(`${API_BASE}/explain`, {
         line: lineContent,
         state: step.variables
@@ -196,17 +210,19 @@ const Visualizer = () => {
     }
   }, [currentStepIndex, steps.length, handleExplain, animationMode]);
 
+  // ── Derived data for current step ──
   const currentStep = currentStepIndex >= 0 ? steps[currentStepIndex] : null;
-  const prevStep = currentStepIndex > 0 ? steps[currentStepIndex - 1] : { variables: {} };
+  const prevStep = currentStepIndex > 0 ? steps[currentStepIndex - 1] : { variables: {}, memory: [] };
+  const codeLines = code.split('\n');
 
   return (
-    <div className="flex flex-col h-screen bg-[#0a0a0a] text-white p-6 gap-6">
-      <header className="flex justify-between items-center">
+    <div className="flex flex-col h-screen bg-[#0a0a0a] text-white p-6 gap-5">
+      <header className="flex justify-between items-center shrink-0">
         <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
             AI Code Visualizer
           </h1>
-          <p className="text-white/40 text-sm">Step through Python code and understand its logic</p>
+          <p className="text-white/40 text-sm">Step through Python code and visualize runtime memory</p>
         </div>
         {animationMode && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20">
@@ -217,22 +233,22 @@ const Visualizer = () => {
       </header>
 
       {truncated && (
-        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 text-xs">
+        <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 text-xs shrink-0">
           <span className="text-yellow-400">⚠</span>
           <span>Execution truncated for visualization — showing first {steps.length} steps. Try simplifying your code or reducing loop/recursion depth.</span>
         </div>
       )}
 
-      <div className="flex-1 flex gap-6 overflow-hidden">
-        {/* Left Side: Code Editor */}
+      <div className="flex-1 flex gap-5 overflow-hidden min-h-0">
+        {/* Left Side: Code Editor + Controls */}
         <div className="flex-[0.8] flex flex-col gap-4 min-w-[300px]">
-          <CodeEditor 
-            code={code} 
-            setCode={setCode} 
+          <CodeEditor
+            code={code}
+            setCode={setCode}
             currentLine={currentStep ? currentStep.line : null}
             animationMode={animationMode}
           />
-          <StepControls 
+          <StepControls
             onRun={runCode}
             onNext={handleNext}
             onPrev={handlePrev}
@@ -241,7 +257,6 @@ const Visualizer = () => {
             currentStep={currentStepIndex}
             totalSteps={steps.length}
             isRunning={isRunning}
-            // Animation mode props
             animationMode={animationMode}
             isPlaying={isPlaying}
             onPlayPause={handlePlayPause}
@@ -249,12 +264,15 @@ const Visualizer = () => {
             speed={animationSpeed}
             onSpeedChange={handleSpeedChange}
             onJumpToStep={handleJumpToStep}
+            // Enhanced timeline props
+            steps={steps}
+            codeLines={codeLines}
           />
         </div>
 
         {/* Right Side: Data Panels */}
         <div className="flex-[1.2] flex flex-col gap-4 min-w-[500px]">
-          <ExplanationPanel 
+          <ExplanationPanel
             explanation={explanation}
             onExplain={handleExplain}
             loading={explaining}
@@ -264,15 +282,21 @@ const Visualizer = () => {
             steps={steps}
             currentStepIndex={currentStepIndex}
           />
-          
+
           <div className="flex-1 flex gap-4 min-h-0">
-            <VariablesPanel 
-              variables={currentStep ? currentStep.variables : {}} 
-              prevVariables={prevStep ? prevStep.variables : {}}
+            {/* Memory Visualizer (replaces old VariablesPanel) */}
+            <MemoryVisualizer
+              memory={currentStep ? currentStep.memory || [] : []}
+              references={currentStep ? currentStep.references || [] : []}
+              changedVariables={currentStep ? currentStep.changedVariables || [] : []}
+              loopInfo={currentStep ? currentStep.loopInfo || null : null}
+              prevMemory={prevStep ? prevStep.memory || [] : []}
             />
+
+            {/* Output + Error panel */}
             <div className="w-1/3 flex flex-col gap-4">
-              <OutputPanel 
-                output={currentStep ? currentStep.output : ""} 
+              <OutputPanel
+                output={currentStep ? currentStep.output : ""}
                 finalOutput={steps.length > 0 ? steps[steps.length - 1].output : ""}
                 isLastStep={steps.length > 0 && currentStepIndex === steps.length - 1}
               />
@@ -286,6 +310,20 @@ const Visualizer = () => {
           </div>
         </div>
       </div>
+
+      {/* Execution Timeline */}
+      {steps.length > 0 && (
+        <ExecutionTimeline
+          currentStepIndex={currentStepIndex}
+          totalSteps={steps.length}
+          onStepChange={setCurrentStepIndex}
+          isPlaying={isPlaying}
+          onPlayToggle={handlePlayPause}
+          animationSpeed={animationSpeed}
+          onSpeedChange={handleSpeedChange}
+          steps={steps}
+        />
+      )}
     </div>
   );
 };

@@ -113,6 +113,8 @@ const generateCaption = (line, variables, prevVariables, codeLines, currentLineN
 const DynamicCaption = ({ code, steps, currentStepIndex }) => {
   const [displayText, setDisplayText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState('');
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
   const intervalRef = useRef(null);
 
   const codeLines = code.split('\n');
@@ -122,14 +124,45 @@ const DynamicCaption = ({ code, steps, currentStepIndex }) => {
 
   const caption = currentStep
     ? generateCaption(
-        codeLines[currentStep.line - 1] || '',
+        codeLines[currentStep.lineNumber - 1] || '',
         currentStep.variables || {},
         prevStep.variables || {},
         codeLines,
-        currentStep.line,
-        nextStep ? nextStep.line : null
+        currentStep.lineNumber,
+        nextStep ? nextStep.lineNumber : null
       )
     : 'Ready to animate…';
+
+  // Fetch AI explanation when step changes in animation mode
+  useEffect(() => {
+    if (!currentStep) {
+      setAiExplanation('');
+      return;
+    }
+
+    setLoadingExplanation(true);
+    setAiExplanation('');
+
+    const lineContent = codeLines[currentStep.lineNumber - 1] || "Evaluation";
+    
+    fetch('http://localhost:8000/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        line: lineContent,
+        state: currentStep.variables || {}
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        setAiExplanation(data.explanation || '');
+        setLoadingExplanation(false);
+      })
+      .catch(err => {
+        console.error("Error fetching explanation:", err);
+        setLoadingExplanation(false);
+      });
+  }, [currentStepIndex, currentStep, codeLines]);
 
   useEffect(() => {
     // Clear any existing interval
@@ -162,12 +195,46 @@ const DynamicCaption = ({ code, steps, currentStepIndex }) => {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -6 }}
         transition={{ duration: 0.2 }}
-        className="text-sm leading-relaxed min-h-[40px] flex items-center"
+        className="text-sm leading-relaxed space-y-3"
       >
-        <span className="text-purple-100/90 font-medium">
-          {displayText}
-          {isTyping && <span className="typewriter-cursor" />}
-        </span>
+        {/* Typewriter caption */}
+        <div className="flex items-start gap-2">
+          <span className="text-purple-300 font-semibold text-lg">▶</span>
+          <span className="text-purple-100/90 font-medium flex-1">
+            {displayText}
+            {isTyping && <span className="typewriter-cursor" />}
+          </span>
+        </div>
+
+        {/* AI-generated explanation */}
+        {aiExplanation && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="pl-6 border-l-2 border-purple-400/40"
+          >
+            <div className="text-xs text-purple-300/70 font-semibold uppercase tracking-wide mb-1">
+              💡 AI Insight
+            </div>
+            <div className="text-sm text-purple-100/80 leading-relaxed">
+              {aiExplanation}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Loading state */}
+        {loadingExplanation && !aiExplanation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="pl-6 border-l-2 border-purple-400/20"
+          >
+            <div className="text-xs text-purple-300/50 italic">
+              ✨ Generating AI explanation...
+            </div>
+          </motion.div>
+        )}
       </motion.div>
     </AnimatePresence>
   );

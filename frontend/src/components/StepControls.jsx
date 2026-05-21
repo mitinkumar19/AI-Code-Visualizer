@@ -1,13 +1,15 @@
 import React from 'react';
 import { Play, SkipBack, SkipForward, RotateCcw } from 'lucide-react';
 import AnimationControls from './AnimationControls';
-import AnimationTimeline from './AnimationTimeline';
+import ExecutionTimeline from './ExecutionTimeline';
 
 const StepControls = ({ 
   onRun, onNext, onPrev, onReset, onSeek,
   currentStep, totalSteps, isRunning,
   // Animation mode props
-  animationMode, isPlaying, onPlayPause, onRestart, speed, onSpeedChange, onJumpToStep
+  animationMode, isPlaying, onPlayPause, onRestart, speed, onSpeedChange, onJumpToStep,
+  // Enhanced timeline props
+  steps = [], codeLines = []
 }) => {
   const isFinished = totalSteps > 0 && currentStep >= totalSteps - 1;
 
@@ -67,7 +69,7 @@ const StepControls = ({
         )}
       </div>
 
-      {/* Bottom section: slider (normal) or animation controls + timeline (anim) */}
+      {/* Bottom section: timeline */}
       {animationMode ? (
         <div className="flex flex-col gap-3">
           <AnimationControls
@@ -82,27 +84,26 @@ const StepControls = ({
           />
           {totalSteps > 0 && (
             <div className="bg-white/5 px-4 py-3 rounded-lg border border-white/10">
-              <AnimationTimeline
+              <ExecutionTimeline
+                steps={steps}
                 currentStep={currentStep >= 0 ? currentStep : 0}
                 totalSteps={totalSteps}
                 onJumpToStep={onJumpToStep}
+                codeLines={codeLines}
               />
             </div>
           )}
         </div>
       ) : (
         totalSteps > 0 && (
-          <div className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-lg border border-white/10">
-            <span className="text-xs text-white/40 font-mono">1</span>
-            <input 
-              type="range" 
-              min="0" 
-              max={totalSteps - 1} 
-              value={currentStep >= 0 ? currentStep : 0} 
-              onChange={onSeek}
-              className="flex-1 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-purple-500"
+          <div className="bg-white/5 px-4 py-3 rounded-lg border border-white/10">
+            <ExecutionTimeline
+              steps={steps}
+              currentStep={currentStep >= 0 ? currentStep : 0}
+              totalSteps={totalSteps}
+              onJumpToStep={onJumpToStep}
+              codeLines={codeLines}
             />
-            <span className="text-xs text-white/40 font-mono">{totalSteps}</span>
           </div>
         )
       )}

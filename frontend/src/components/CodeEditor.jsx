@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CodeEditor = ({ code, setCode, currentLine, animationMode }) => {
   const textareaRef = useRef(null);
@@ -49,11 +50,39 @@ const CodeEditor = ({ code, setCode, currentLine, animationMode }) => {
         style={{ minHeight: '6rem', maxHeight: '50vh', height: editorHeight }}
       >
         <div className="absolute top-0 left-0 w-full h-full p-4 flex">
-          {/* Line numbers — only for meaningful lines */}
-          <div className="w-8 text-right pr-4 text-white/20 select-none shrink-0">
-            {displayLines.map((_, i) => (
-              <div key={i}>{i + 1}</div>
-            ))}
+          {/* Line numbers with active line marker */}
+          <div className="w-10 text-right pr-4 select-none shrink-0">
+            {displayLines.map((_, i) => {
+              const lineNum = i + 1;
+              const isActive = safeLine === lineNum;
+              return (
+                <div 
+                  key={i} 
+                  className={`relative transition-colors duration-300 ${
+                    isActive 
+                      ? animationMode ? 'text-purple-400 font-bold' : 'text-blue-400 font-bold' 
+                      : 'text-white/20'
+                  }`}
+                >
+                  {/* Active line gutter marker */}
+                  {isActive && (
+                    <motion.div
+                      layoutId="gutter-marker"
+                      className={`absolute -left-1 top-1 w-1.5 h-4 rounded-full ${
+                        animationMode ? 'bg-purple-400' : 'bg-blue-400'
+                      }`}
+                      style={{
+                        boxShadow: animationMode 
+                          ? '0 0 8px rgba(139, 92, 246, 0.6)' 
+                          : '0 0 8px rgba(59, 130, 246, 0.6)',
+                      }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  {lineNum}
+                </div>
+              );
+            })}
           </div>
           <textarea
             ref={textareaRef}
@@ -67,19 +96,29 @@ const CodeEditor = ({ code, setCode, currentLine, animationMode }) => {
             } placeholder:text-white/15 placeholder:italic`}
             spellCheck="false"
           />
-          {/* Highlight layer */}
+          {/* Highlight layer — smooth animated position */}
           <div className="absolute top-4 left-0 w-full pointer-events-none">
-            {safeLine !== null && (
-              <div 
-                className={`w-full absolute transition-all ${
-                  animationMode ? 'line-highlight-anim duration-500' : 'line-highlight duration-200'
-                }`}
-                style={{ 
-                  top: `${(safeLine - 1) * 1.5}rem`,
-                  height: '1.5rem'
-                }}
-              />
-            )}
+            <AnimatePresence>
+              {safeLine !== null && (
+                <motion.div
+                  key="line-highlight"
+                  layoutId="line-highlight"
+                  className={`w-full absolute ${
+                    animationMode ? 'line-highlight-anim' : 'line-highlight'
+                  }`}
+                  initial={{ opacity: 0 }}
+                  animate={{ 
+                    opacity: 1,
+                    top: `${(safeLine - 1) * 1.5}rem`,
+                  }}
+                  transition={{ 
+                    top: { type: 'spring', stiffness: 300, damping: 30 },
+                    opacity: { duration: 0.2 },
+                  }}
+                  style={{ height: '1.5rem' }}
+                />
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

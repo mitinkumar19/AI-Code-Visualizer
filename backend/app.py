@@ -1,13 +1,17 @@
 import os
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException  # pyrefly: ignore [missing-import]
+from pydantic import BaseModel  # pyrefly: ignore [missing-import]
 from typing import List, Dict, Any, Optional
-from executor import CodeExecutor
-from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-from groq import Groq
+from executor import CodeExecutor  # pyrefly: ignore [missing-import]
+from fastapi.middleware.cors import CORSMiddleware  # pyrefly: ignore [missing-import]
+from dotenv import load_dotenv  # pyrefly: ignore [missing-import]
+from groq import Groq  # pyrefly: ignore [missing-import]
 
-load_dotenv()
+from pathlib import Path  # pyrefly: ignore [missing-import]
+
+# Load .env from backend/ or project root
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 app = FastAPI(title="AI Code Visualizer API")
 
@@ -45,7 +49,7 @@ async def explain_step(request: ExplainRequest):
     groq_api_key = os.getenv("GROQ_API_KEY")
     if not groq_api_key:
         # Return a mock explanation if no API key is provided
-        return {"explanation": f"Executing line: '{request.line}'. Current variables: {request.state}. (Add GROQ_API_KEY for AI explanation)"}
+        return {"explanation": f"Executing line: '{request.line}'. Current variables: {request.state}."}
 
     try:
         client = Groq(api_key=groq_api_key)
@@ -73,5 +77,5 @@ async def explain_step(request: ExplainRequest):
         return {"explanation": f"Error generating explanation: {str(e)}"}
 
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn  # pyrefly: ignore [missing-import]
     uvicorn.run(app, host="0.0.0.0", port=8000)
