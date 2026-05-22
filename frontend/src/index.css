@@ -243,3 +243,62 @@ body {
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+/* ══════════════════════════════════════════════════════
+   FILE UPLOAD ANIMATIONS
+   ══════════════════════════════════════════════════════ */
+
+/* ── Drag-over dropzone pulse ── */
+@keyframes upload-border-pulse {
+  0% {
+    border-color: rgba(139, 92, 246, 0.25);
+    box-shadow: inset 0 0 20px rgba(139, 92, 246, 0.03), 0 0 15px rgba(139, 92, 246, 0.05);
+  }
+  50% {
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: inset 0 0 30px rgba(139, 92, 246, 0.06), 0 0 25px rgba(139, 92, 246, 0.1);
+  }
+  100% {
+    border-color: rgba(139, 92, 246, 0.25);
+    box-shadow: inset 0 0 20px rgba(139, 92, 246, 0.03), 0 0 15px rgba(139, 92, 246, 0.05);
+  }
+}
+
+.upload-dropzone-active {
+  animation: upload-border-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Error shake animation ── */
+@keyframes upload-shake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-6px); }
+  20% { transform: translateX(6px); }
+  30% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  50% { transform: translateX(-3px); }
+  60% { transform: translateX(3px); }
+  70% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
+
+.upload-shake {
+  animation: upload-shake 0.5s ease-in-out;
+}
+
+/* ── Success glow ── */
+@keyframes success-border-glow {
+  0% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.2), 0 0 40px rgba(16, 185, 129, 0.05);
+  }
+  100% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.1);
+  }
+}
+
+.success-glow {
+  animation: success-border-glow 2s ease-in-out infinite;
+}
+

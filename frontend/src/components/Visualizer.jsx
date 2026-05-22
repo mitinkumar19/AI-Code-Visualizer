@@ -1,10 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { AnimatePresence } from 'framer-motion';
+import { Upload, FileCode2 } from 'lucide-react';
 import CodeEditor from './CodeEditor';
 import MemoryVisualizer from './MemoryVisualizer';
 import StepControls from './StepControls';
 import OutputPanel from './OutputPanel';
 import ExplanationPanel from './ExplanationPanel';
+import ExecutionTimeline from './ExecutionTimeline';
+import FileUpload from './FileUpload';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -17,6 +21,8 @@ const Visualizer = () => {
   const [explaining, setExplaining] = useState(false);
   const [truncated, setTruncated] = useState(false);
   const [useAdvancedViz, setUseAdvancedViz] = useState(true); // Toggle between old and new visualization
+  const [showUpload, setShowUpload] = useState(false);
+  const [detectedLanguage, setDetectedLanguage] = useState('');
 
   // ── Animation Mode State ──
   const [animationMode, setAnimationMode] = useState(false);
@@ -179,6 +185,19 @@ const Visualizer = () => {
     setExplanation('');
   };
 
+  // ── File upload handler ──
+  const handleCodeExtracted = useCallback((extractedCode, language) => {
+    setCode(extractedCode);
+    setDetectedLanguage(language || '');
+    setShowUpload(false);
+    // Reset any previous execution state
+    setSteps([]);
+    setCurrentStepIndex(-1);
+    setExplanation('');
+    setIsPlaying(false);
+    setTruncated(false);
+  }, []);
+
   // ── AI Explanation (only in normal mode) ──
   const handleExplain = React.useCallback(async () => {
     if (animationMode) return; // Skip API calls in animation mode
@@ -224,12 +243,32 @@ const Visualizer = () => {
           </h1>
           <p className="text-white/40 text-sm">Step through Python code and visualize runtime memory</p>
         </div>
-        {animationMode && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20">
-            <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-            <span className="text-xs text-purple-300 font-medium">Animation Mode</span>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {detectedLanguage && detectedLanguage !== 'Unknown' && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-[10px] text-emerald-300 font-medium">{detectedLanguage}</span>
+            </div>
+          )}
+          {animationMode && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20">
+              <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+              <span className="text-xs text-purple-300 font-medium">Animation Mode</span>
+            </div>
+          )}
+          <button
+            onClick={() => setShowUpload(!showUpload)}
+            id="upload-toggle-btn"
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+              showUpload
+                ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30 shadow-[0_0_12px_rgba(139,92,246,0.15)]'
+                : 'bg-white/5 text-white/50 border border-white/10 hover:bg-white/10 hover:text-white/70'
+            }`}
+          >
+            <FileCode2 size={14} />
+            <span>Upload File</span>
+          </button>
+        </div>
       </header>
 
       {truncated && (
@@ -238,6 +277,16 @@ const Visualizer = () => {
           <span>Execution truncated for visualization — showing first {steps.length} steps. Try simplifying your code or reducing loop/recursion depth.</span>
         </div>
       )}
+
+      {/* Upload Panel */}
+      <AnimatePresence>
+        {showUpload && (
+          <FileUpload
+            onCodeExtracted={handleCodeExtracted}
+            onClose={() => setShowUpload(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 flex gap-5 overflow-hidden min-h-0">
         {/* Left Side: Code Editor + Controls */}

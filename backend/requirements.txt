@@ -3,3 +3,9 @@ uvicorn
 groq
 python-dotenv
 pydantic
+PyMuPDF
+python-docx
+easyocr
+python-multipart
+Pillow
+numpy

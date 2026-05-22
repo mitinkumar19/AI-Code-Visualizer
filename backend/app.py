@@ -8,6 +8,7 @@ from dotenv import load_dotenv  # pyrefly: ignore [missing-import]
 from groq import Groq  # pyrefly: ignore [missing-import]
 
 from pathlib import Path  # pyrefly: ignore [missing-import]
+from routes.upload import router as upload_router  # pyrefly: ignore [missing-import]
 
 # Load .env from backend/ or project root
 load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
@@ -22,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include upload route for code extraction
+app.include_router(upload_router)
 
 class RunRequest(BaseModel):
     code: str

@@ -135,22 +135,24 @@ const DynamicCaption = ({ code, steps, currentStepIndex }) => {
 
   // Fetch AI explanation when step changes in animation mode
   useEffect(() => {
-    if (!currentStep) {
+    if (currentStepIndex < 0 || !steps || !steps[currentStepIndex]) {
       setAiExplanation('');
       return;
     }
 
+    const step = steps[currentStepIndex];
     setLoadingExplanation(true);
     setAiExplanation('');
 
-    const lineContent = codeLines[currentStep.lineNumber - 1] || "Evaluation";
+    const lines = code.split('\n');
+    const lineContent = lines[step.lineNumber - 1] || "Evaluation";
     
     fetch('http://localhost:8000/explain', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         line: lineContent,
-        state: currentStep.variables || {}
+        state: step.variables || {}
       })
     })
       .then(res => res.json())
@@ -162,7 +164,7 @@ const DynamicCaption = ({ code, steps, currentStepIndex }) => {
         console.error("Error fetching explanation:", err);
         setLoadingExplanation(false);
       });
-  }, [currentStepIndex, currentStep, codeLines]);
+  }, [currentStepIndex, code, steps]);
 
   useEffect(() => {
     // Clear any existing interval
